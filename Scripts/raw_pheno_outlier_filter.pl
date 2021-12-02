@@ -30,43 +30,98 @@ GetOptions(
 
 die &usage() if (defined $help or !defined $input);
 $output_prefix ||= "./output";  # prefix of output with path.
-$method ||= 'zscore';       # zscore or 3u
-$cutoff ||= '1.5';          # cufoff for filter.
+$method ||= 'zscore';           # zscore or 3u
+$cutoff ||= '1.5';              # cutoff for filter.
 
 my ($prefix, $outdir, $suffix) = fileparse($output_prefix);
+if (! -d $outdir){
+    mkdir $outdir;
+}
 my $output_mean_file = $outdir . $prefix . "_mean.txt";
 print STDOUT "Output mean file: $output_mean_file \n";
 ## begin
 my ($data_hash, $row_ids, $colum_ids) = &data_to_hash($input);
-my (%out_mean, %out_good, %out_bad);
 
 ## filter
+my (%out_mean, %out_good, %out_bad);
 foreach my $col (sort keys %$data_hash){
     foreach my $row (sort keys %{$data_hash->{$col}}){
-        my $values = $data_hash->{$col}->{$row};
-        # print STDERR join("\t", @$values)."\n";
-        # check not values and filter weak data
-        my $split_data = &data_filter($values, $method, $cutoff);
-        # print Dumper $split_data->{'good'}->[0];
-        # print STDERR join ("\t", @{$split_data->{'good'}->[0]})."\n";
-        # print Dumper @good_values;
-        my $mean = &average(@{$split_data->{'good'}->[0]});
-        my $good = join("|", @{$split_data->{'good'}->[0]});
-        my $bad = join("|", @{$split_data->{'drop'}});
+        my @values = @{$data_hash->{$col}->{$row}};
 
-        $out_mean{$row}{$col} = $mean;
-        $out_good{$row}{$col} = $good;
-        $out_bad{$row}{$col} = $bad;
+        # check values
+        my (@pass_val, @good_val, @drop_val);
+
+        foreach my $val (@values){
+            if (looks_like_number($val) && $val != 0){
+                push @pass_val, $val;
+            }else{
+                push @drop_val, $val;
+            }
+        }
+
+        if (scalar(@pass_val) >= 3){
+            # filter
+            my $stat = Statistics::Descriptive::Full->new();
+            $stat->add_data(@pass_val);
+            my $mean = $stat->mean();
+
+            if ($method eq '3u'){
+                my $Q1 = $stat->quantile(1);
+                my $Q3 = $stat->quantile(3);
+                my $e_value_min = $Q1 - $cutoff * ($Q3 - $Q1);
+                my $e_value_max = $Q3 + $cutoff * ($Q3 - $Q1);
+
+                foreach my $val (@pass_val){
+                    if ($val >= $e_value_min && $val <= $e_value_max){
+                        push @good_val, $val;
+                    }else{
+                        push @drop_val, $val;
+                    }
+                }
+            }elsif($method eq 'zscore'){
+                my $standard_deviation = $stat->standard_deviation() ? $stat->standard_deviation() : 0;
+
+                if ($standard_deviation > 0){
+                    foreach my $val (@pass_val){
+                        my $zscore = ($val - $mean) / $standard_deviation;
+                        if (abs($zscore) <= $cutoff ) {
+                            push @good_val, $val;
+                        }else{
+                            push @drop_val, $val;
+                        }
+                    }
+                }else{
+                    push @good_val, @pass_val;
+                }
+            }else{
+                print STDERR "ERROR!\n";
+                exit 1;
+            }
+
+            $out_mean{$row}{$col} = &average(@good_val);
+            $out_good{$row}{$col} = join("|", @good_val);
+
+        }elsif (scalar(@pass_val) > 0) {
+            push @good_val, @pass_val;
+            $out_mean{$row}{$col} = &average(@good_val);
+            $out_good{$row}{$col} = join("|", @good_val);
+        }else{
+            $out_mean{$row}{$col} = "NA";
+            $out_good{$row}{$col} = "-";
+            $out_bad{$row}{$col}  = join("|", @drop_val);
+        }
+        # $out_mean{$row}{$col} = &average(@good_val);
+        # $out_good{$row}{$col} = join("|", @good_val);
+        $out_bad{$row}{$col}  = scalar(@drop_val) > 0 ? join("|", @drop_val) : "-"; 
     }
 }
 
-print Dumper %out_mean;
-## Main
+
+# print Dumper %out_mean;
 # sort by row id
-my @arr = keys %$row_ids;
 my @p_sort = map{$_->[0]}
     sort {$a->[1] <=> $b->[1] }    
-        map{ my ($idx) = $_ =~ /[IBMSCL](\d+)/; [$_, $idx]; } @arr;
+        map{ my ($idx) = $_ =~ /[IBMSCL](\d+)/; [$_, $idx]; } keys %$row_ids;
 
 # output mean values file
 open O1, "> $output_mean_file" || die "Can't write to file: $output_mean_file \n";
@@ -76,7 +131,9 @@ foreach my $row_id (@p_sort){
     my @out;
     foreach my $col_id (sort keys %$colum_ids){
 
-        my $mmm = exists $out_mean{$row_id}{$col_id} && looks_like_number($out_mean{$row_id}{$col_id}) ? sprintf("%.2f", $out_mean{$row_id}{$col_id}) : "NA";
+        # my $mmm = exists $out_mean{$row_id}{$col_id} ? sprintf("%.2f", $out_mean{$row_id}{$col_id}) : "NA";
+        my $mmm = exists $out_mean{$row_id}{$col_id} ? $out_mean{$row_id}{$col_id} : "NA";
+
         push @out, $mmm;
     }
     print O1 join("\t", $row_id, @out)."\n";
@@ -170,7 +227,8 @@ sub check {
 sub data_filter {
     # set filter method
     my ($arr_values, $filter_method, $filter_cutoff) = @_;
-    my $checked_data = &check(@$arr_values);
+    # print Dumper $arr_values;
+    my $checked_data = &check($arr_values);
     my @pass_val = $checked_data->{'pass'};
     my @drop_val = $checked_data->{'drop'};
     
@@ -198,8 +256,9 @@ sub data_filter {
     if (scalar (@drop_val) == 0 || undef @drop_val){
         push @drop_val, "NA";
     }
-    $out{'good'} = \@good_val;
-    $out{'drop'} = \@drop_val;
+
+    push @{$out{'good'}}, @good_val;
+    push @{$out{'drop'}}, @drop_val;
 
     return(\%out);
 }
@@ -212,6 +271,8 @@ sub average {
     my $stat = Statistics::Descriptive::Full->new();
     $stat->add_data(@data);
     my $mean = $stat->mean();
+
+    $mean = sprintf("%.2f", $mean);
 
     return($mean);
 }
@@ -239,8 +300,8 @@ sub filter_by_3u {
             push @drop_val, $value;
         }
     }
-    $out{'good'} = \@good_val;
-    $out{'drop'} = \@drop_val;
+    push @{$out{'good'}}, @good_val;
+    push @{$out{'drop'}}, @drop_val;
 
     return (\%out);
 }
@@ -254,27 +315,28 @@ sub filter_by_zscore {
     $stat->add_data(@$data);
     my $mean = $stat->mean();
     my $standard_deviation = $stat->standard_deviation();
-
     my (%out, @good_val, @drop_val);
-    if ($standard_deviation == 0){
-        push @good_val, @$data;
 
-    }else{
-        foreach my $value (@$data){
-            my $zscore = ($value - $mean) / $standard_deviation;
-            if (abs($zscore) <= $cutoff ) {
-                push @good_val, $value;
-            }else{
-                push @drop_val, $value;
-            }
-        }
-    }
+    # print Dumper $standard_deviation;
 
-    $out{'good'} = \@good_val;
-    $out{'drop'} = \@drop_val;
+    # if ($standard_deviation > 0){
+    #     foreach my $value (@$data){
+    #         my $zscore = ($value - $mean) / $standard_deviation;
+    #         if (abs($zscore) <= $cutoff ) {
+    #             push @good_val, $value;
+    #         }else{
+    #             push @drop_val, $value;
+    #         }
+    #     }
+    # }else{
+    #     push @good_val, @$data;
+        
+    # }
 
-    return(\%out);
+    # push @{$out{'good'}}, @good_val;
+    # push @{$out{'drop'}}, @drop_val;
 
+    # return(\%out);
 }
 
 sub usage {
@@ -309,36 +371,6 @@ Taxa trait1 trait2 ...
 O1_rep1 1   2.3
 O1_rep2 2.3 2.3
 O1_rep3 .. .. 
-O1_rep4 .. ..
 O2_rep1 .. ..
 O2_rep2 .. ..
-O2_rep3 .. ..
 
-
-        my ()
-        my ($pass, $drop) = &check(@$values);
-        my @good;
-
-        # check outlier
-        if (scalar(@$pass) > 3){
-            # my ($g, $b, $m) = &filter_by_3u(@pass);
-            my ($g, $b, $m) = &filter_by_zscore(\@pass, 1);
-            
-
-            $mean{$id}{$trait} = $m;
-            push @good, @$g;
-            push @drop, @$b;
-
-        }elsif(scalar(@pass) > 0){
-            my $stat = Statistics::Descriptive::Full->new();
-            $stat->add_data(@pass);
-            my $mean = $stat->mean();
-            
-            $mean{$id}{$trait} = $mean;
-            push @good, @pass;
-
-        }else{
-            next;
-        }
-        $out_good{$id}{$trait} = join("|", @good);
-        $out_bad{$id}{$trait} = join("|", @drop);
