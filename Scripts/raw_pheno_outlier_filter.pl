@@ -277,67 +277,67 @@ sub average {
     return($mean);
 }
 
-sub filter_by_3u {
-    # filter by 3u
-    use Statistics::Descriptive;
+# sub filter_by_3u {
+#     # filter by 3u
+#     use Statistics::Descriptive;
 
-    my ($data, $cutoff) = @_;
-    my $stat = Statistics::Descriptive::Full->new();
-    $stat->add_data(@$data);
-    my $Q1 = $stat->quantile(1);
-    my $Q3 = $stat->quantile(3);
-    my $e_value_min = $Q1 - $cutoff * ($Q3 - $Q1);
-    my $e_value_max = $Q3 + $cutoff * ($Q3 - $Q1);
+#     my ($data, $cutoff) = @_;
+#     my $stat = Statistics::Descriptive::Full->new();
+#     $stat->add_data(@$data);
+#     my $Q1 = $stat->quantile(1);
+#     my $Q3 = $stat->quantile(3);
+#     my $e_value_min = $Q1 - $cutoff * ($Q3 - $Q1);
+#     my $e_value_max = $Q3 + $cutoff * ($Q3 - $Q1);
 
-    my %out;
+#     my %out;
 
-    my (@good_val, @drop_val);
+#     my (@good_val, @drop_val);
 
-    foreach my $value (@$data){
-        if ($value >= $e_value_min && $value <= $e_value_max ){
-            push @good_val, $value;
-        }else{
-            push @drop_val, $value;
-        }
-    }
-    push @{$out{'good'}}, @good_val;
-    push @{$out{'drop'}}, @drop_val;
+#     foreach my $value (@$data){
+#         if ($value >= $e_value_min && $value <= $e_value_max ){
+#             push @good_val, $value;
+#         }else{
+#             push @drop_val, $value;
+#         }
+#     }
+#     push @{$out{'good'}}, @good_val;
+#     push @{$out{'drop'}}, @drop_val;
 
-    return (\%out);
-}
+#     return (\%out);
+# }
 
-sub filter_by_zscore {
-    # filter by zscore
-    use Statistics::Descriptive;
+# sub filter_by_zscore {
+#     # filter by zscore
+#     use Statistics::Descriptive;
 
-    my ($data, $cutoff) = @_;
-    my $stat = Statistics::Descriptive::Full->new();
-    $stat->add_data(@$data);
-    my $mean = $stat->mean();
-    my $standard_deviation = $stat->standard_deviation();
-    my (%out, @good_val, @drop_val);
+#     my ($data, $cutoff) = @_;
+#     my $stat = Statistics::Descriptive::Full->new();
+#     $stat->add_data(@$data);
+#     my $mean = $stat->mean();
+#     my $standard_deviation = $stat->standard_deviation();
+#     my (%out, @good_val, @drop_val);
 
-    # print Dumper $standard_deviation;
+#     # print Dumper $standard_deviation;
 
-    # if ($standard_deviation > 0){
-    #     foreach my $value (@$data){
-    #         my $zscore = ($value - $mean) / $standard_deviation;
-    #         if (abs($zscore) <= $cutoff ) {
-    #             push @good_val, $value;
-    #         }else{
-    #             push @drop_val, $value;
-    #         }
-    #     }
-    # }else{
-    #     push @good_val, @$data;
+#     # if ($standard_deviation > 0){
+#     #     foreach my $value (@$data){
+#     #         my $zscore = ($value - $mean) / $standard_deviation;
+#     #         if (abs($zscore) <= $cutoff ) {
+#     #             push @good_val, $value;
+#     #         }else{
+#     #             push @drop_val, $value;
+#     #         }
+#     #     }
+#     # }else{
+#     #     push @good_val, @$data;
         
-    # }
+#     # }
 
-    # push @{$out{'good'}}, @good_val;
-    # push @{$out{'drop'}}, @drop_val;
+#     # push @{$out{'good'}}, @good_val;
+#     # push @{$out{'drop'}}, @drop_val;
 
-    # return(\%out);
-}
+#     # return(\%out);
+# }
 
 sub usage {
     print STDERR <<EOF;
