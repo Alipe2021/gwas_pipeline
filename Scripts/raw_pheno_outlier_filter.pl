@@ -348,13 +348,14 @@ sub usage {
   Usage: 
     perl $0 [options] -i <input.txt> 
   Options:
-    -h|--help   print this help information.
-    -i|--input  input raw data.
-    -m|--method method for data filter, 3u or zscore. [default: zscore]
-    -c|--cutoff cutoff for filter.  [default: 1.5]
-    -o|--output prefix of output.   [default: output]
-    -g|--good   output of good data.
-    -b|--bad    output of bad data.
+    -i|--input  <str>   input raw data.
+    -m|--method <str>   method for data filter, 3u or zscore. [default: zscore]
+    -c|--cutoff <float> cutoff for filter.  [default: 1.5]
+    -o|--output <str>   prefix of output.   [default: output]
+    -g|--good   <flag>  output of good data.
+    -b|--bad    <flag>  output of bad data.
+    -h|--help           print this help information.
+
   Example:
     perl $0 -m 3u -c 1.5 -i input.txt -o /path/to/output -g 
   or
