@@ -1,0 +1,58 @@
+
+simpleM
+
+simpleM is a multiple testing correction method for genetic association studies using correlated SNPs. The software is written in R.
+
+Citation:
+
+Multiple testing corrections for imputed SNPs. Gao X. Genet Epidemiol. 2011 Apr;35(3):154-8.
+
+Avoiding the high Bonferroni penalty in genome-wide association studies.  Gao X, Becker LC, Becker DM, Starmer JD, Province MA. Genet Epidemiol. 2010 Jan;34(1):100-5.
+A multiple testing correction method for genetic association studies using correlated single nucleotide polymorphisms. Gao X, Starmer J, Martin ER. Genet Epidemiol. 2008 May;32(4):361-9.
+
+Data Format:
+Genotypes are coded as 0, 1 and 2: 0, 1 and 2 are the number of the reference alleles. Genotypes are separated by one-character white spaces. Rows are SNPs and columns are individuals. SNPs should be in their physical order (for calculating LD). NO SNP names and individuals IDs. Missing values should be imputed, which is mainly for keeping the correlation matrix positive semi-definite. There are several possible ways to fill in the missing values, e.g. using imputation software, K-nearest neighbor (KNN) or replacing them with the common allele genotypes.
+
+An example data:
+2 1 2 2 2 2 0
+2 2 2 1 2 2 0
+1 2 0 0 1 2 0
+2 2 2 2 1 2 2
+2 1 1 1 2 0 2
+1 2 2 1 1 2 1
+2 1 2 1 2 2 2
+2 2 2 1 2 2 1
+2 1 2 1 1 1 2
+2 2 2 2 1 1 2
+
+Download:
+Please click the link: http://sourceforge.net/projects/simplem/files/simpleM_Ex.zip/download
+
+How to use it:
+You only need to change one single line (tell the program where your data is stored at) in the downloaded R program. Search for the line: fn_In <- "D:/simpleM_Ex/snpSample.txt". Replace the file path and name with your own data file path and name. simpleM outputs the effective number of independent tests.
+
+License:
+GPL version 2 or newer.
+
+Frequently asked questions:
+I got the following error message. What shall I do?
+    Error in eigen(CLD) : infinite or missing values in 'x'
+    In addition: Warning message:
+    In cor(dt_My) : the standard deviation is zero
+    > snpInBlk <- t(mySNP_nonmissing[myStart:numLoci, ])
+    > MeffBlk <- inferCutoff(snpInBlk)
+    Error in eigen(CLD) : infinite or missing values in 'x'
+    In addition: Warning message:
+    In cor(dt_My) : the standard deviation is zero
+    > simpleMeff <- c(simpleMeff, MeffBlk)
+    Error: object 'MeffBlk' not found
+
+Answer:
+The above error was triggered by non-polymorphic SNPs in your data set. For example, all individuals have only 0 values for a SNP, or all 1s, or all 2s.
+Solution: filter your SNPs based on minor allele frequency (MAF), e.g. keeping only SNPs with MAF >= 0.05 or 0.01.
+
+Feedback and Suggestions:
+Xiaoyi Gao, ray.x.gao_at_gmail*dot*com
+
+
+
